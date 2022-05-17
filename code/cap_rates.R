@@ -1,35 +1,29 @@
 cap_rate <- function(){
-  library(policyPlot)
+  require(ggplot2)
+  require(readxl)
+  require(dplyr)
+  require(tibble)
+  require(tidyr)
+  
+  data <- read_excel("/href/prod/cre/reits/REITs/data/ttracker.xlsx", sheet = "Data", skip = 284, n_max = 20) %>%
+    t() %>%
+    data.frame(stringsAsFactors = FALSE)
+  
+  names(data) <- as.character(unlist(data[1,]))
+  data <- data[-1,]
+  data <- data[,-19] # blank space in file
+  
+  data <- data %>%
+    mutate_all(as.numeric) %>%
+    mutate(date = seq.Date(from=as.Date("2000-01-01"), by = 'quarter', length.out=length(data$Industrial))) %>%
+    select(Office, Industrial, Retail, Apartments, `Lodging/Resorts`, `All Equity REITs`, date) %>%
+    pivot_longer(!date, names_to="type", values_to="value")
 
-  tislist <- getfame(c(all = "caprate_all.q",
-            off = "caprate_off.q",
-            ind = "caprate_ind.q",
-            ret = "caprate_ret.q",
-            apt = "caprate_apt.q",
-            lod = "caprate_lod.q"), db = "/href/prod/cre/data/reitcmbs.db")
-
-  rplot.line(tislist,
-             Title = "Implied Capitalization Rate",
-             Col = c("black", "blue", "deepskyblue", "forestgreen", "purple", "goldenrod"),
-             Lty = c(1, 2, 1, 2, 1, 2),
-             Lwd = c(1.5, 0.75, 0.75, 0.75, 0.75, 0.75),
-             Y2lim = c(-2, 18),
-             legend = FALSE,
-             legend.text = c("All Equity REITs", "Office", "Industrial", "Retail", "Multifamily", "Lodging"),
-             legend.y.loc = 18,
-             legend.x.loc = 2010,
-             footvec = c("Source: NAREIT"))
-  legend("top",
-         c("All Equity REITs", "Office", "Industrial", "Retail", "Multifamily", "Lodging"),
-         ncol = 2,
-         col = c("black", "blue", "deepskyblue", "forestgreen", "purple", "goldenrod"),
-         xpd = TRUE,
-         inset = 0.025,
-         pch = NULL,
-         x.intersp = 0.5,
-         y.intersp = 1,
-         bty = "n",
-         cex = .65,
-         lty = c(1, 2, 1, 2, 1, 2),
-         lwd = 2,)
+  ggplot(data=data, aes(x=date, y=value)) +
+    geom_line(aes(color=type, linetype=type)) +
+    scale_color_manual(values=c("black", "purple", "deepskyblue", "goldenrod", "blue", "forestgreen")) +
+    scale_linetype_manual(values = c(1,2,1,2,1,2)) +
+    labs(x="", y="", title = "Implied Capitalization Rate", colour="Asset Type", linetype="Asset Type", caption = "Source: NAREIT") +
+    theme_bw() +
+    theme(plot.caption=element_text(hjust=0))
 }
