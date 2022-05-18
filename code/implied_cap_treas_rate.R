@@ -1,11 +1,12 @@
 imp_cap_rate <- function(){
-  library(readxl)
-  library(dplyr)
-  library(lubridate)
-  library(policyPlot)
-  library(frb)
-
-  data <- read_excel("/href/prod/cre/data/quarterly/reits/TTracker.xlsx", sheet = "Data", skip = 284, n_max = 20) %>%
+  require(readxl)
+  require(dplyr)
+  require(lubridate)
+  require(quantmod)
+  require(tidyr)
+  require(ggplot2)
+  
+  data <- read_excel("/href/prod/cre/reits/REITs/data/ttracker.xlsx", sheet = "Data", skip = 284, n_max = 20) %>%
     t() %>%
     data.frame(stringsAsFactors = FALSE)
 
@@ -13,77 +14,44 @@ imp_cap_rate <- function(){
   data <- data[-1,]
   data <- data[,-19] # blank space in file
 
-  data <- data %>%
-    select(Office, Industrial, Retail, Apartments, `Lodging/Resorts`, `Self Storage`, `Health Care`, `All Equity REITs`) %>%
-    mutate_all(as.numeric)
+  data_post <- data %>%
+    mutate_all(as.numeric) %>%
+    mutate(date = seq.Date(from=as.Date("2000-01-01"), by = 'quarter', length.out=length(data$Industrial))) %>%
+    select(Office, Industrial, Retail, Apartments, `Lodging/Resorts`, `All Equity REITs`, date) %>%
+    pivot_longer(!date, names_to="type", values_to="value")
+  
+  # Get rid of old zeros but not new ones
+  data_pre <- data_post %>%
+    filter(date<=as.Date("2012-10-01")) %>%
+    na_if(0)
+  data <- rbind(data_pre,filter(data_post, date>as.Date("2012-10-01")))
 
-  off <- tis(data$Office, start = 20000101, frequency = 4)
-  ind <- tis(data$Industrial, start = 20000101, frequency = 4)
-  ret <- tis(data$Retail, start = 20000101, frequency = 4)
-  apt <- tis(data$Apartments, start = 20000101, frequency = 4)
-  lod <- tis(data$`Lodging/Resorts`, start = 20000101, frequency = 4)
-  stor <- tis(data$`Self Storage`, start = 20000101, frequency = 4)
-  hea <- tis(data$`Health Care`, start = 20000101, frequency = 4)
-  all <- tis(data$`All Equity REITs`, start = 20000101, frequency = 4)
+  # pull treasury rates from FRED
+  getSymbols("GS10", src='FRED')
+  treas <- data.frame(date=index(GS10),coredata(GS10))
 
-
-  # pull treasury rates from fame
-  treas <- getfame(c(yield="riflgfcy10_n.m"), db = "us", start = 20000101)
-
-  treas_df<- tis2df(treas)
-  treas_df$date<- as.Date(treas_df$date)
-
-  treas_df<-cbind(treas_df,qtr=quarter(treas_df$date), year=year(treas_df$date))
-
-  treas_df<- treas_df %>%
+  # Convert to quarterly
+  treas<- treas %>%
+    mutate(qtr=quarter(date),
+           year=year(date)) %>%
+    filter(date>=as.Date("2000-01-01")) %>%
     group_by(year,qtr) %>%
     arrange(date) %>%
-    mutate(qtr_rate=mean(yield))%>%
-    filter(row_number(yield)==1)
-
-  treas.qtr <- tis(treas_df$qtr_rate,start=20000101, freq=4)
-
-
-
-  #treas.avg <- as.tis(stats::filter(treas$yield, rep(1/3,3), sides = 1))
+    mutate(qtr_rate=mean(GS10))%>%
+    filter(row_number(GS10)==1)
 
   #Create the spread
-  off.spd <- off - treas.qtr
-  ind.spd <- ind - treas.qtr
-  ret.spd <- ret - treas.qtr
-  apt.spd <- apt - treas.qtr
-  lod.spd <- lod - treas.qtr
-  stor.spd <- stor - treas.qtr
-  hea.spd <- hea - treas.qtr
-  all.spd <- all- treas.qtr
-
-  tislist <- list(all.spd, off.spd, ind.spd, ret.spd, apt.spd, lod.spd)
-
-  rplot.line(tislist,
-             Title = "Spread of Implied Capitalization Rate at Origination\nto Treasury Yield",
-             Col = c("black", "blue", "deepskyblue", "forestgreen", "purple", "goldenrod"),
-             Lty = c(1, 2, 1, 2, 1, 2),
-             Lwd = c(1.5, 0.75, 0.75, 0.75, 0.75, 0.75),
-             Y2lim = c(-2, 12),
-             legend = FALSE,
-             Y2lab = "Percent",
-             Freqlab2 = "Quarterly",
-             legend.text = c("All Equity REITs", "Office", "Industrial", "Retail", "Multifamily", "Lodging"),
-             legend.y.loc = 18,
-             legend.x.loc = 2010,
-             footvec = c("Source: NAREIT"))
-
-  legend("top",
-         c("All Equity REITs", "Office", "Industrial", "Retail", "Multifamily", "Lodging"),
-         ncol = 2,
-         col = c("black", "blue", "deepskyblue", "forestgreen", "purple", "goldenrod"),
-         xpd = TRUE,
-         inset = 0.025,
-         pch = NULL,
-         x.intersp = 0.5,
-         y.intersp = 1,
-         bty = "n",
-         cex = .65,
-         lty = c(1, 2, 1, 2, 1, 2),
-         lwd = 2,)
+  data <- data %>%
+    merge(treas) %>%
+    mutate(spread = value - qtr_rate)
+    
+  ggplot(data=data, aes(x=date, y=spread)) +
+    geom_line(aes(color=type, linetype=type)) +
+    scale_color_manual(values=c("black", "purple", "deepskyblue", "goldenrod", "blue", "forestgreen")) +
+    scale_linetype_manual(values = c(1,2,1,2,1,2)) +
+    geom_line(data=filter(data, type=="All Equity REITs"), size=1.2) +
+    annotate(geom="text", label=as.character(as.yearqtr(max(data$date))), x=max(data$date), y=max(tail(data$spread, n=24))) +
+    labs(x="", y="", title = "Spread of Implied Capitalization Rate at Origination\nto Treasury Yield", colour="Asset Type", linetype="Asset Type", caption = "Source: NAREIT") +
+    theme_bw() +
+    theme(plot.caption=element_text(hjust=0))
 }
