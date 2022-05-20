@@ -31,7 +31,7 @@ cap_rate <- function(){
     scale_color_manual(values=c("black", "purple", "deepskyblue", "goldenrod", "blue", "forestgreen")) +
     scale_linetype_manual(values = c(1,2,1,2,1,2)) +
     geom_line(data=filter(data, type=="All Equity REITs"), size=1.2) +
-    annotate(geom="text", label=as.character(as.yearqtr(max(data$date))), x=max(data$date), y=max(tail(data$value, n=24)+1)) +
+    geom_text(label=as.character(as.yearqtr(max(data$date))), x=max(data$date), y=max(tail(data$value, n=24)+1)) +
     labs(x="", y="", title = "Implied Capitalization Rate", colour="Asset Type", linetype="Asset Type", caption = "Source: NAREIT") +
     theme_bw() +
     theme(plot.caption=element_text(hjust=0))

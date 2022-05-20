@@ -38,7 +38,7 @@ caprate <- function(){
   
   ### Cap Rate ----
   
-  sec_debt <- read_excel("/href/prod/cre/data/quarterly/reits/TTracker.xlsx", sheet = "Data",
+  sec_debt <- read_excel("/href/prod/cre/reits/REITs/data/ttracker.xlsx", sheet = "Data",
                          skip = 312, n_max = 19) %>%
     t() %>%
     data.frame(stringsAsFactors = FALSE)
@@ -47,9 +47,13 @@ caprate <- function(){
   sec_debt <- sec_debt[-1,]
   sec_debt <- sec_debt %>%
     mutate_all(as.numeric) %>%
-    mutate(All = Office + Industrial + Retail + Residential + Diversified + `Lodging/Resorts` + `Self Storage` + `Health Care` + Timber + Infrastructure + `Data Centers` + Specialty)
+    mutate(All = Office + Industrial + Retail + Residential + Diversified + `Lodging/Resorts` + `Self Storage` + `Health Care` + Timber + Infrastructure + `Data Centers` + Specialty) %>%
+    mutate(date = seq.Date(from=as.Date("2000-01-01"), by = 'quarter', length.out=length(sec_debt$Industrial))) %>%
+    select(Office, Industrial, Retail, Apartments, `Lodging/Resorts`, date) %>%
+    pivot_longer(!date, names_to="type", values_to="value")
   
-  unsec_debt <- read_excel("/href/prod/cre/data/quarterly/reits/TTracker.xlsx", sheet = "Data",
+  
+  unsec_debt <- read_excel("/href/prod/cre/reits/REITs/data/ttracker.xlsx", sheet = "Data",
                            skip = 336, n_max = 19) %>%
     t() %>%
     data.frame(stringsAsFactors = FALSE)
@@ -58,16 +62,16 @@ caprate <- function(){
   unsec_debt <- unsec_debt[-1,]
   unsec_debt <- unsec_debt %>%
     mutate_all(as.numeric) %>%
-    mutate(All = Office + Industrial + Retail + Residential + Diversified + `Lodging/Resorts` + `Self Storage` + `Health Care` + Timber + Infrastructure + `Data Centers` + Specialty)
+    mutate(All = Office + Industrial + Retail + Residential + Diversified + `Lodging/Resorts` + `Self Storage` + `Health Care` + Timber + Infrastructure + `Data Centers` + Specialty) %>%
+    mutate(date = seq.Date(from=as.Date("2000-01-01"), by = 'quarter', length.out=length(unsec_debt$Industrial))) %>%
+    select(Office, Industrial, Retail, Apartments, `Lodging/Resorts`, All, date) %>%
+    pivot_longer(!date, names_to="type", values_to="value")
   
-  debt_off <- 1000*tis(sec_debt$Office + unsec_debt$Office, start = 20000101, frequency = 4)
-  debt_ind <- 1000*tis(sec_debt$Industrial + unsec_debt$Industrial, start = 20000101, frequency = 4)
-  debt_ret <- 1000*tis(sec_debt$Retail + unsec_debt$Retail, start = 20000101, frequency = 4)
-  debt_apt <- 1000*tis(sec_debt$Apartments + unsec_debt$Apartments, start = 20000101, frequency = 4)
-  debt_lod <- 1000*tis(sec_debt$`Lodging/Resorts` + unsec_debt$`Lodging/Resorts`, start = 20000101, frequency = 4)
-  debt_all <- 1000*tis(sec_debt$All + unsec_debt$All, start = 20000101, frequency = 4)
+  debt <- sec_debt %>%
+    left_join(unsec_debt, by=c("date","type"), suffix=c("_sec", "_unsec")) %>%
+    mutate(tot=100*(value_sec+value_unsec)/value)
   
-  data <- read_excel("/href/prod/cre/data/quarterly/reits/TTracker.xlsx", sheet = "Data", skip = 32, n_max = 20) %>%
+  data <- read_excel("/href/prod/cre/reits/REITs/data/ttracker.xlsx", sheet = "Data", skip = 32, n_max = 20) %>%
     t() %>%
     data.frame(stringsAsFactors = FALSE)
   
@@ -76,17 +80,10 @@ caprate <- function(){
   data <- data[,-19] # blank space in file
   
   data <- data %>%
-    select(Office, Industrial, Retail, Apartments, `Lodging/Resorts`, `Self Storage`, `Health Care`, `All Equity REITs`) %>%
-    mutate_all(as.numeric)
-  
-  off <- tis(data$Office, start = 20000101, frequency = 4)
-  ind <- tis(data$Industrial, start = 20000101, frequency = 4)
-  ret <- tis(data$Retail, start = 20000101, frequency = 4)
-  apt <- tis(data$Apartments, start = 20000101, frequency = 4)
-  lod <- tis(data$`Lodging/Resorts`, start = 20000101, frequency = 4)
-  stor <- tis(data$`Self Storage`, start = 20000101, frequency = 4)
-  hea <- tis(data$`Health Care`, start = 20000101, frequency = 4)
-  all <- tis(data$`All Equity REITs`, start = 20000101, frequency = 4)
+    mutate_all(as.numeric) %>%
+    mutate(date = seq.Date(from=as.Date("2000-01-01"), by = 'quarter', length.out=length(data$Industrial))) %>%
+    select(Office, Industrial, Retail, Apartments, `Lodging/Resorts`, `All Equity REITs`, date) %>%
+    pivot_longer(!date, names_to="type", values_to="value")
   
   tislist <- getfame(c(all = "mktcap_all.m",
                        off = "mktcap_off.m",
