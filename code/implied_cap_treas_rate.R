@@ -50,7 +50,7 @@ imp_cap_rate <- function(){
     scale_color_manual(values=c("black", "purple", "deepskyblue", "goldenrod", "blue", "forestgreen")) +
     scale_linetype_manual(values = c(1,2,1,2,1,2)) +
     geom_line(data=filter(data, type=="All Equity REITs"), size=1.2) +
-    geom_text(label=as.character(as.yearqtr(max(data$date))), x=max(data$date), y=max(tail(data$spread, n=24))) +
+    geom_text(label=as.character(as.yearqtr(max(data$date))), x=max(data$date)-150, y=max(tail(data$spread, n=24)+1)) +
     labs(x="", y="", title = "Spread of Implied Capitalization Rate at Origination\nto Treasury Yield", colour="Asset Type", linetype="Asset Type", caption = "Source: NAREIT") +
     theme_bw() +
     theme(plot.caption=element_text(hjust=0))

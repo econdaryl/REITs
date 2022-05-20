@@ -51,7 +51,7 @@ sector_lev <- function(){
     geom_line(aes(color=type, linetype=type)) +
     scale_color_manual(values=c("purple", "deepskyblue", "goldenrod", "blue", "forestgreen")) +
     scale_linetype_manual(values = c(2,1,2,1,2)) +
-    geom_text(label=as.character(as.yearqtr(max(data$date))), x=max(data$date), y=max(tail(data$lev, n=24)+2)) +
+    geom_text(label=as.character(as.yearqtr(max(data$date))), x=max(data$date)-150, y=max(tail(data$lev, n=24)+5)) +
     labs(x="", y="", title = "Leverage Ratio", colour="Asset Type", linetype="Asset Type", caption = "Source: NAREIT") +
     theme_bw() +
     theme(plot.caption=element_text(hjust=0))
