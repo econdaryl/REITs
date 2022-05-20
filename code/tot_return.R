@@ -1,93 +1,104 @@
 tot_return <- function(){
-  data <- getfame(c("tot_ret_equity.m", "tot_ret_off.m", "tot_ret_ind.m",
-                    "tot_ret_res.m", "tot_ret_lod.m", "tot_ret_ret.m"), db = "reitcmbs")
-  all <- 100*data$tot_ret_equity.m/as.numeric(window(data$tot_ret_equity.m, start=20070101, end = 20070101))
-  off <- 100*data$tot_ret_off.m/as.numeric(window(data$tot_ret_off.m, start=20070101, end = 20070101))
-  ind <- 100*data$tot_ret_ind.m/as.numeric(window(data$tot_ret_ind.m, start=20070101, end = 20070101))
-  res <- 100*data$tot_ret_res.m/as.numeric(window(data$tot_ret_res.m, start=20070101, end = 20070101))
-  lod <- 100*data$tot_ret_lod.m/as.numeric(window(data$tot_ret_lod.m, start=20070101, end = 20070101))
-  ret <- 100*data$tot_ret_ret.m/as.numeric(window(data$tot_ret_ret.m, start=20070101, end = 20070101))
+  all <- read_excel("/href/prod/cre/reits/REITs/data/MonthlyHistoricalReturns.xls", sheet = "Index Data")
+  office <- read_excel("/href/prod/cre/reits/REITs/data/Office.xls")
+  ind <- read_excel("/href/prod/cre/reits/REITs/data/Industrial.xls")
+  res <- read_excel("/href/prod/cre/reits/REITs/data/Residential.xls")
+  lod <- read_excel("/href/prod/cre/reits/REITs/data/Lodging-Resorts.xls")
+  retail <- read_excel("/href/prod/cre/reits/REITs/data/Retail.xls")
   
-  all <- window(all, start = 20000101)
-  off <- window(off, start = 20000101)
-  ind <- window(ind, start = 20000101)
-  ret <- window(ret, start = 20000101)
-  res <- window(res, start = 20000101)
-  lod <- window(lod, start = 20000101)
+  div_column <- grep("Total", office)+1
   
-  tislist <- list(all, off, ind, ret, res, lod)
+  num_row <- 7
+  ret_all <- all[-(1:273-1),24] %>%
+    mutate_all(as.numeric) %>%
+    mutate(date = seq.Date(from=as.Date("1993-12-01"), by = 'month', length.out=nrow(all[-(1:273-1),24])),
+           `All Equity REITs` = 100*`...24`/`...24`[1]) %>%
+    select(-`...24`)
+  ret_off <- office[-(1:num_row-1),div_column] %>%
+    mutate_all(as.numeric) %>%
+    rename(Office=...4) %>%
+    mutate(date = seq.Date(from=as.Date("1993-12-01"), by = 'month', length.out=nrow(office[-(1:num_row-1),div_column])))
+  ret_ind <- ind[-(1:num_row-1),div_column] %>%
+    mutate_all(as.numeric) %>%
+    rename(Industrial=...4) %>%
+    mutate(date = seq.Date(from=as.Date("1993-12-01"), by = 'month', length.out=nrow(ind[-(1:num_row-1),div_column])))
+  ret_res <- res[-(1:num_row-1),div_column] %>%
+    mutate_all(as.numeric) %>%
+    rename(Residential=...4) %>%
+    mutate(date = seq.Date(from=as.Date("1993-12-01"), by = 'month', length.out=nrow(res[-(1:num_row-1),div_column])))
+  ret_lod <- lod[-(1:num_row-1),div_column] %>%
+    mutate_all(as.numeric) %>%
+    rename(Lodging=...4) %>%
+    mutate(date = seq.Date(from=as.Date("1993-12-01"), by = 'month', length.out=nrow(lod[-(1:num_row-1),div_column])))
+  ret_ret <- retail[-(1:num_row-1),div_column] %>%
+    mutate_all(as.numeric) %>%
+    rename(Retail=...4) %>%
+    mutate(date = seq.Date(from=as.Date("1993-12-01"), by = 'month', length.out=nrow(retail[-(1:num_row-1),div_column])))
   
-  rplot.line(tislist,
-             Title = "Total Return Index",
-             Col = c("black", "blue", "deepskyblue", "forestgreen", "purple", "goldenrod"),
-             Y2lab = "Jan. 2007 = 100",
-             Lty = c(1, 2, 1, 2, 1, 2),
-             Lwd = c(1.5, 0.75, 0.75, 0.75, 0.75, 0.75),
-             Y2lim = c(0, 350),
-             Y2int = 50,
-             legend = FALSE,
-             legend.text = c("All Equity REITs", "Office", "Industrial", "Retail", "Multifamily", "Lodging"),
-             legend.y.loc = 18,
-             legend.x.loc = 2010,
-             footvec = c("Source: NAREIT"))
-  legend("topleft",
-         c("All Equity REITs", "Office", "Industrial", "Retail", "Multifamily", "Lodging"),
-         ncol = 2,
-         col = c("black", "blue", "deepskyblue", "forestgreen", "purple", "goldenrod"),
-         xpd = TRUE,
-         inset = 0.025,
-         pch = NULL,
-         x.intersp = 0.5,
-         y.intersp = 1,
-         bty = "n",
-         cex = .65,
-         lty = c(1, 2, 1, 2, 1, 2),
-         lwd = 2,)
+  ret <- list(ret_all, ret_off, ret_ind, ret_res, ret_lod, ret_ret) %>%
+    reduce(full_join, by='date') %>%
+    pivot_longer(!date, names_to="type", values_to="ret")
+  
+  ggplot(data=ret, aes(x=date, y=ret)) +
+    geom_line(aes(color=type, linetype=type)) +
+    scale_color_manual(values=c("black", "purple", "deepskyblue", "goldenrod", "blue", "forestgreen")) +
+    scale_linetype_manual(values = c(1,2,1,2,1,2)) +
+    geom_text(label=as.character(format(max(ret$date), "%b %Y")), x=max(ret$date)-150, y=60) +
+    labs(x="", y="", title = "Total Return Index", colour="Asset Type", linetype="Asset Type", caption = "Note: December 1993=100\nSource: NAREIT") +
+    theme_bw() +
+    theme(plot.caption=element_text(hjust=0))
 }
 
 tot_return_20 <- function(){
-  data <- getfame(c("tot_ret_equity.m", "tot_ret_off.m", "tot_ret_ind.m",
-                    "tot_ret_res.m", "tot_ret_lod.m", "tot_ret_ret.m"), db = "reitcmbs")
-  all <- 100*data$tot_ret_equity.m/as.numeric(window(data$tot_ret_equity.m, start=20200101, end = 20200101))
-  off <- 100*data$tot_ret_off.m/as.numeric(window(data$tot_ret_off.m, start=20200101, end = 20200101))
-  ind <- 100*data$tot_ret_ind.m/as.numeric(window(data$tot_ret_ind.m, start=20200101, end = 20200101))
-  res <- 100*data$tot_ret_res.m/as.numeric(window(data$tot_ret_res.m, start=20200101, end = 20200101))
-  lod <- 100*data$tot_ret_lod.m/as.numeric(window(data$tot_ret_lod.m, start=20200101, end = 20200101))
-  ret <- 100*data$tot_ret_ret.m/as.numeric(window(data$tot_ret_ret.m, start=20200101, end = 20200101))
+  all <- read_excel("/href/prod/cre/reits/REITs/data/MonthlyHistoricalReturns.xls", sheet = "Index Data")
+  office <- read_excel("/href/prod/cre/reits/REITs/data/Office.xls")
+  ind <- read_excel("/href/prod/cre/reits/REITs/data/Industrial.xls")
+  res <- read_excel("/href/prod/cre/reits/REITs/data/Residential.xls")
+  lod <- read_excel("/href/prod/cre/reits/REITs/data/Lodging-Resorts.xls")
+  retail <- read_excel("/href/prod/cre/reits/REITs/data/Retail.xls")
   
-  all <- window(all, start = 20190701)
-  off <- window(off, start = 20190701)
-  ind <- window(ind, start = 20190701)
-  ret <- window(ret, start = 20190701)
-  res <- window(res, start = 20190701)
-  lod <- window(lod, start = 20190701)
+  div_column <- grep("Total", office)+1
   
-  tislist <- list(all, off, ind, ret, res, lod)
+  num_row <- 7
+  ret_all <- all[-(1:273-1),24] %>%
+    mutate_all(as.numeric) %>%
+    mutate(date = seq.Date(from=as.Date("1993-12-01"), by = 'month', length.out=nrow(all[-(1:273-1),24])),
+           `All Equity REITs` = 100*`...24`/`...24`[1]) %>%
+    select(-`...24`)
+  ret_off <- office[-(1:num_row-1),div_column] %>%
+    mutate_all(as.numeric) %>%
+    rename(Office=...4) %>%
+    mutate(date = seq.Date(from=as.Date("1993-12-01"), by = 'month', length.out=nrow(office[-(1:num_row-1),div_column])))
+  ret_ind <- ind[-(1:num_row-1),div_column] %>%
+    mutate_all(as.numeric) %>%
+    rename(Industrial=...4) %>%
+    mutate(date = seq.Date(from=as.Date("1993-12-01"), by = 'month', length.out=nrow(ind[-(1:num_row-1),div_column])))
+  ret_res <- res[-(1:num_row-1),div_column] %>%
+    mutate_all(as.numeric) %>%
+    rename(Residential=...4) %>%
+    mutate(date = seq.Date(from=as.Date("1993-12-01"), by = 'month', length.out=nrow(res[-(1:num_row-1),div_column])))
+  ret_lod <- lod[-(1:num_row-1),div_column] %>%
+    mutate_all(as.numeric) %>%
+    rename(Lodging=...4) %>%
+    mutate(date = seq.Date(from=as.Date("1993-12-01"), by = 'month', length.out=nrow(lod[-(1:num_row-1),div_column])))
+  ret_ret <- retail[-(1:num_row-1),div_column] %>%
+    mutate_all(as.numeric) %>%
+    rename(Retail=...4) %>%
+    mutate(date = seq.Date(from=as.Date("1993-12-01"), by = 'month', length.out=nrow(retail[-(1:num_row-1),div_column])))
   
-  rplot.line(tislist,
-             Title = "Total Return Index",
-             Col = c("black", "blue", "deepskyblue", "forestgreen", "purple", "goldenrod"),
-             Y2lab = "Jan. 2020 = 100",
-             Lty = c(1, 2, 1, 2, 1, 2),
-             Lwd = c(1.5, 0.75, 0.75, 0.75, 0.75, 0.75),
-             Y2lim = c(40, 140),
-             Y2int = 20,
-             legend = FALSE,
-             legend.text = c("All Equity REITs", "Office", "Industrial", "Retail", "Multifamily", "Lodging"),
-             legend.y.loc = 18,
-             legend.x.loc = 2010,
-             footvec = c("Source: NAREIT"))
-  legend("topleft",
-         c("All Equity REITs", "Office", "Industrial", "Retail", "Multifamily", "Lodging"),
-         ncol = 2,
-         col = c("black", "blue", "deepskyblue", "forestgreen", "purple", "goldenrod"),
-         xpd = TRUE,
-         inset = 0.025,
-         pch = NULL,
-         x.intersp = 0.5,
-         y.intersp = 1,
-         bty = "n",
-         cex = .45,
-         lty = c(1, 3, 1, 3, 1, 3),
-         lwd = 2,)
+  ret <- list(ret_all, ret_off, ret_ind, ret_res, ret_lod, ret_ret) %>%
+    reduce(full_join, by='date') %>%
+    pivot_longer(!date, names_to="type", values_to="ret") %>%
+    filter(date>=as.Date("2020-01-01")) %>%
+    group_by(type) %>%
+    mutate(ret = 100*ret/ret[1])
+  
+  ggplot(data=ret, aes(x=date, y=ret)) +
+    geom_line(aes(color=type, linetype=type)) +
+    scale_color_manual(values=c("black", "purple", "deepskyblue", "goldenrod", "blue", "forestgreen")) +
+    scale_linetype_manual(values = c(1,2,1,2,1,2)) +
+    geom_text(label=as.character(format(max(ret$date), "%b %Y")), x=max(ret$date)-50, y=60) +
+    labs(x="", y="", title = "Total Return Index", colour="Asset Type", linetype="Asset Type", caption = "Note: January 2020=100\nSource: NAREIT") +
+    theme_bw() +
+    theme(plot.caption=element_text(hjust=0))
 }
