@@ -1,4 +1,10 @@
 tot_return <- function(){
+  require(readxl)
+  require(dplyr)
+  require(tidyr)
+  require(ggplot2)
+  require(purrr)
+  
   all <- read_excel("/href/prod/cre/reits/REITs/data/MonthlyHistoricalReturns.xls", sheet = "Index Data")
   office <- read_excel("/href/prod/cre/reits/REITs/data/Office.xls")
   ind <- read_excel("/href/prod/cre/reits/REITs/data/Industrial.xls")
@@ -50,6 +56,12 @@ tot_return <- function(){
 }
 
 tot_return_20 <- function(){
+  require(readxl)
+  require(dplyr)
+  require(tidyr)
+  require(ggplot2)
+  require(purrr)
+  
   all <- read_excel("/href/prod/cre/reits/REITs/data/MonthlyHistoricalReturns.xls", sheet = "Index Data")
   office <- read_excel("/href/prod/cre/reits/REITs/data/Office.xls")
   ind <- read_excel("/href/prod/cre/reits/REITs/data/Industrial.xls")
