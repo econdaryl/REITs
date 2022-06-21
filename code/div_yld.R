@@ -1,4 +1,10 @@
 div_yld <- function(){
+  require(purrr)
+  require(dplyr)
+  require(readxl)
+  require(tidyr)
+  require(ggplot2)
+  require(zoo)
   ### Total Returns and Dividend Yield ----
   download.file("https://www.reit.com/sites/default/files/returns/Office.xls", "/href/prod/cre/reits/REITs/data/Office.xls", method="wget")
   download.file("https://www.reit.com/sites/default/files/returns/Industrial.xls", "/href/prod/cre/reits/REITs/data/Industrial.xls", method="wget")
@@ -50,7 +56,7 @@ div_yld <- function(){
     geom_line(aes(color=type, linetype=type)) +
     scale_color_manual(values=c("black", "purple", "deepskyblue", "goldenrod", "blue", "forestgreen")) +
     scale_linetype_manual(values = c(1,2,1,2,1,2)) +
-    geom_text(label=as.character(as.yearqtr(max(data$date))), x=max(data$date)-150, y=max(tail(data$lev, n=24)+5)) +
+    geom_text(label=as.character(as.yearqtr(max(div$date))), x=max(div$date)-150, y=max(tail(div$lev, n=24)+5)) +
     labs(x="", y="", title = "Dividend Yield", colour="Asset Type", linetype="Asset Type", caption = "Source: NAREIT") +
     theme_bw() +
     theme(plot.caption=element_text(hjust=0))

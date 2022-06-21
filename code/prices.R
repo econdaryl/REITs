@@ -4,12 +4,14 @@
 prices <- function(){
   require(quantmod)
   require(ggplot2)
+  require(dplyr)
   
-  getSymbols('^FNER', auto.assign = FALSE)
+  FNER <- getSymbols('^FNER', auto.assign = FALSE)
   
   FNER <- data.frame(FNER) %>%
-    mutate(FNER.Close=100*FNER.Close/head(FNER.Close,1),
-           date=as.Date(rownames(FNER)))
+    mutate(FNER.Close=100*FNER.Close/head(FNER.Close,1))
+  
+  FNER <- FNER %>% mutate(date=as.Date(rownames(FNER)))
   
   ggplot(data=FNER, aes(x=date, y=FNER.Close, group=1)) +
     geom_line() +
@@ -22,10 +24,13 @@ prices <- function(){
 prices30 <- function(){
   require(quantmod)
   require(ggplot2)
+  require(dplyr)
   
-  getSymbols('^FNER', auto.assign = FALSE)
+  FNER <- getSymbols('^FNER', auto.assign = FALSE)
   
-  FNER <- data.frame(FNER) %>%
+  FNER <- data.frame(FNER)
+  
+  FNER <- FNER %>% 
     mutate(date = as.Date(rownames(FNER))) %>%
     filter(date>=max(date)-30) %>%
     mutate(FNER.Close=100*FNER.Close/head(FNER.Close,1))
