@@ -8,6 +8,12 @@ grep -Po 'href="\K.*.xlsx?(?=")' temp | perl -ne 'print "https://reit.com$_"' | 
 
 rm temp
 
+echo " "
+echo " Updating the REIT Packet "
+echo " "
+
+R -e "rmarkdown::render('reit_packet.Rmd', output_dir='../charts/')"
+
 echo ""
 echo " Done! "
 echo ""
