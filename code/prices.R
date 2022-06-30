@@ -32,7 +32,8 @@ prices30 <- function(){
   
   FNER <- FNER %>% 
     mutate(date = as.Date(rownames(FNER))) %>%
-    filter(date>=max(date)-30) %>%
+    filter(date>=max(date)-31) %>%
+    filter(!is.na(FNER.Close)) %>%
     mutate(FNER.Close=100*FNER.Close/head(FNER.Close,1))
 
   ggplot(data=FNER, aes(x=date, y=FNER.Close, group=1)) +
